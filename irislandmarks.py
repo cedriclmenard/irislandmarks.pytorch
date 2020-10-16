@@ -24,11 +24,22 @@ class IrisBlock(nn.Module):
         else:
             padding = (kernel_size - 1) // 2
 
-        self.convs = nn.Sequential(
-            nn.Conv2d(in_channels=in_channels, out_channels=int(out_channels/2), kernel_size=stride, stride=1, padding=0, bias=True),
-            nn.PReLU(int(out_channels/2)),
+        # self.convs = nn.Sequential(
+        #     nn.Conv2d(in_channels=in_channels, out_channels=int(out_channels/2), kernel_size=stride, stride=1, padding=0, bias=True),
+        #     nn.PReLU(int(out_channels/2)),
+        #     nn.Conv2d(in_channels=int(out_channels/2), out_channels=int(out_channels/2), 
+        #               kernel_size=kernel_size, stride=stride, padding=padding,  # Padding might be wrong here
+        #               groups=int(out_channels/2), bias=True),
+        #     nn.Conv2d(in_channels=int(out_channels/2), out_channels=out_channels, kernel_size=1, stride=1, padding=0, bias=True),
+        # )
+
+        self.convAct = nn.Sequential(
+            nn.Conv2d(in_channels=in_channels, out_channels=int(out_channels/2), kernel_size=stride, stride=stride, padding=0, bias=True),
+            nn.PReLU(int(out_channels/2))
+        )
+        self.dwConvConv = nn.Sequential(
             nn.Conv2d(in_channels=int(out_channels/2), out_channels=int(out_channels/2), 
-                      kernel_size=kernel_size, stride=stride, padding=padding,  # Padding might be wrong here
+                      kernel_size=kernel_size, stride=1, padding=padding,  # Padding might be wrong here
                       groups=int(out_channels/2), bias=True),
             nn.Conv2d(in_channels=int(out_channels/2), out_channels=out_channels, kernel_size=1, stride=1, padding=0, bias=True),
         )
@@ -61,16 +72,17 @@ class IrisBlock(nn.Module):
         # self.act = nn.PReLU(out_channels)
 
     def forward(self, x):
+        h = self.convAct(x)
         if self.stride == 2:
-            h = F.pad(x, (0, 2, 0, 2), "constant", 0)
+            h = F.pad(h, (0, 2, 0, 2), "constant", 0)
             x = self.max_pool(x)
-        else:
-            h = x
+        
+        h = self.dwConvConv(h)
 
         if self.channel_pad > 0:
             x = F.pad(x, (0, 0, 0, 0, 0, self.channel_pad), "constant", 0)
         
-        return self.act(self.convs(h) + x)
+        return self.act(h + x)
 
 
 class IrisLandmarks(nn.Module):
