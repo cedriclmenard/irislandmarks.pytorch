@@ -44,9 +44,11 @@ img = centerCropSquare(img, centerRight, side=400) # 400 is 1200 (image size) * 
 # img = img[tl[0]:br[0], tl[1]:br[1]]
 # plt.imshow(img)
 # plt.show()
-img = np.fliplr(img) # the detector is trained on the left eye only, hence the flip
+# img = np.fliplr(img) # the detector is trained on the left eye only, hence the flip
 
 img = cv2.cvtColor(img, cv2.COLOR_BGR2RGB)
+# img = cv2.cvtColor(img, cv2.COLOR_BGR2GRAY)
+# img = cv2.cvtColor(img, cv2.COLOR_GRAY2RGB)
 img = cv2.resize(img, (64, 64))
 
 # test = net.predict_on_image(img)

@@ -3,6 +3,16 @@ import torch
 import torch.nn as nn
 import torch.nn.functional as F
 
+class Print(nn.Module):
+    def __init__(self, description=None):
+        self.description = description
+        super(Print, self).__init__()
+
+    def forward(self, x):
+        if not self.description is None:
+            print(self.description)
+        print(x.shape)
+        return x
 
 class IrisBlock(nn.Module):
     """This is the main building block for architecture
@@ -18,11 +28,12 @@ class IrisBlock(nn.Module):
         
         # TFLite uses slightly different padding than PyTorch 
         # on the depthwise conv layer when the stride is 2.
+        padding = (kernel_size - 1) // 2
         if stride == 2:
             self.max_pool = nn.MaxPool2d(kernel_size=stride, stride=stride)
-            padding = 0
-        else:
-            padding = (kernel_size - 1) // 2
+            # padding = 0
+        # else:
+            # padding = (kernel_size - 1) // 2
 
         # self.convs = nn.Sequential(
         #     nn.Conv2d(in_channels=in_channels, out_channels=int(out_channels/2), kernel_size=stride, stride=1, padding=0, bias=True),
@@ -38,46 +49,26 @@ class IrisBlock(nn.Module):
             nn.PReLU(int(out_channels/2))
         )
         self.dwConvConv = nn.Sequential(
+            # Print("Prior to dw conv"),
             nn.Conv2d(in_channels=int(out_channels/2), out_channels=int(out_channels/2), 
                       kernel_size=kernel_size, stride=1, padding=padding,  # Padding might be wrong here
                       groups=int(out_channels/2), bias=True),
+            # Print("after dw Conv"),
             nn.Conv2d(in_channels=int(out_channels/2), out_channels=out_channels, kernel_size=1, stride=1, padding=0, bias=True),
+            # Print("after 2d conv")
         )
 
         self.act = nn.PReLU(out_channels)
 
-        # # Facemesh impl
-
-        # self.stride = stride
-        # self.channel_pad = out_channels - in_channels
-
-        
-
-        # # TFLite uses slightly different padding than PyTorch 
-        # # on the depthwise conv layer when the stride is 2.
-        # if stride == 2:
-        #     self.max_pool = nn.MaxPool2d(kernel_size=stride, stride=stride)
-        #     padding = 0
-        # else:
-        #     padding = (kernel_size - 1) // 2
-
-        # self.convs = nn.Sequential(
-        #     nn.Conv2d(in_channels=in_channels, out_channels=in_channels, 
-        #               kernel_size=kernel_size, stride=stride, padding=padding, 
-        #               groups=in_channels, bias=True),
-        #     nn.Conv2d(in_channels=in_channels, out_channels=out_channels, 
-        #               kernel_size=1, stride=1, padding=0, bias=True),
-        # )
-
-        # self.act = nn.PReLU(out_channels)
-
     def forward(self, x):
         h = self.convAct(x)
+        # h = F.pad(h, (0, 2, 0, 2), "constant", 0)
         if self.stride == 2:
-            h = F.pad(h, (0, 2, 0, 2), "constant", 0)
+            
             x = self.max_pool(x)
         
         h = self.dwConvConv(h)
+        # print("--------------")
 
         if self.channel_pad > 0:
             x = F.pad(x, (0, 0, 0, 0, 0, self.channel_pad), "constant", 0)
@@ -111,8 +102,11 @@ class IrisLandmarks(nn.Module):
 
     def _define_layers(self):
         self.backbone = nn.Sequential(
+            # Print("Input tensor"),
             nn.Conv2d(in_channels=3, out_channels=64, kernel_size=3, stride=2, padding=0, bias=True),
+            # Print("After first conv"),
             nn.PReLU(64),
+            # Print("After first prelu"),
 
             IrisBlock(64, 64),
             IrisBlock(64, 64),
@@ -153,7 +147,9 @@ class IrisLandmarks(nn.Module):
     def forward(self, x):
         # TFLite uses slightly different padding on the first conv layer
         # than PyTorch, so do it manually.
-        x = nn.ReflectionPad2d((1, 0, 1, 0))(x)
+        # x = nn.ReflectionPad2d((1, 0, 1, 0))(x)
+        x = F.pad(x, [0, 1, 0, 1], "constant", 0)
+        # x = F.pad(x, [1, 0, 1, 0], "constant", 0)
         # x = F.pad(x, (1,2,1,2), "constant", 0)
         b = x.shape[0]      # batch size, needed for reshaping later
 
@@ -166,20 +162,6 @@ class IrisLandmarks(nn.Module):
         i = i.reshape(b, -1)            # (b, 15)
         
         return [e, i]
-        # # TFLite uses slightly different padding on the first conv layer
-        # # than PyTorch, so do it manually.
-        # x = nn.ReflectionPad2d((1, 0, 1, 0))(x)
-        # b = x.shape[0]      # batch size, needed for reshaping later
-
-        # x = self.backbone(x)            # (b, 128, 6, 6)
-        
-        # c = self.conf_head(x)           # (b, 1, 1, 1)
-        # c = c.view(b, -1)               # (b, 1)
-        
-        # r = self.coord_head(x)          # (b, 1404, 1, 1)
-        # r = r.reshape(b, -1)            # (b, 1404)
-        
-        # return [r, c]
 
     def _device(self):
         """Which device (CPU or GPU) is being used by this model?"""
@@ -199,7 +181,7 @@ class IrisLandmarks(nn.Module):
         Arguments:
             img: a NumPy array of shape (H, W, 3) or a PyTorch tensor of
                  shape (3, H, W). The image's height and width should be 
-                 128 pixels.
+                 64 pixels.
 
         Returns:
             A tensor with face detections.
@@ -228,6 +210,7 @@ class IrisLandmarks(nn.Module):
         """
         if isinstance(x, np.ndarray):
             x = torch.from_numpy(x).permute((0, 3, 1, 2))
+            # x = torch.from_numpy(x)
 
         assert x.shape[1] == 3
         assert x.shape[2] == 64
@@ -243,9 +226,9 @@ class IrisLandmarks(nn.Module):
 
         # 3. Postprocess the raw predictions:
         eye, iris = out
-        eye[0:-1:3] *= self.x_scale
-        eye[1:-1:3] *= self.y_scale
-        iris[0:-1:3] *= self.x_scale
-        iris[1:-1:3] *= self.y_scale
+        # eye[0:-1:3] *= self.x_scale
+        # eye[1:-1:3] *= self.y_scale
+        # iris[0:-1:3] *= self.x_scale
+        # iris[1:-1:3] *= self.y_scale
 
         return eye.view(-1, 3), iris.view(-1, 3)
