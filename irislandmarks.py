@@ -15,9 +15,7 @@ class Print(nn.Module):
         return x
 
 class IrisBlock(nn.Module):
-    """This is the main building block for architecture
-    which is just residual block with one dw-conv and max-pool/channel pad
-    in the second branch if input size doesn't match output size"""
+    """This is the main building block for architecture"""
     def __init__(self, in_channels: int, out_channels: int, kernel_size: int = 3, stride: int = 1):
         super(IrisBlock, self).__init__()
         
@@ -26,49 +24,30 @@ class IrisBlock(nn.Module):
         self.stride = stride
         self.channel_pad = out_channels - in_channels
         
-        # TFLite uses slightly different padding than PyTorch 
-        # on the depthwise conv layer when the stride is 2.
         padding = (kernel_size - 1) // 2
         if stride == 2:
             self.max_pool = nn.MaxPool2d(kernel_size=stride, stride=stride)
-            # padding = 0
-        # else:
-            # padding = (kernel_size - 1) // 2
-
-        # self.convs = nn.Sequential(
-        #     nn.Conv2d(in_channels=in_channels, out_channels=int(out_channels/2), kernel_size=stride, stride=1, padding=0, bias=True),
-        #     nn.PReLU(int(out_channels/2)),
-        #     nn.Conv2d(in_channels=int(out_channels/2), out_channels=int(out_channels/2), 
-        #               kernel_size=kernel_size, stride=stride, padding=padding,  # Padding might be wrong here
-        #               groups=int(out_channels/2), bias=True),
-        #     nn.Conv2d(in_channels=int(out_channels/2), out_channels=out_channels, kernel_size=1, stride=1, padding=0, bias=True),
-        # )
 
         self.convAct = nn.Sequential(
             nn.Conv2d(in_channels=in_channels, out_channels=int(out_channels/2), kernel_size=stride, stride=stride, padding=0, bias=True),
             nn.PReLU(int(out_channels/2))
         )
         self.dwConvConv = nn.Sequential(
-            # Print("Prior to dw conv"),
             nn.Conv2d(in_channels=int(out_channels/2), out_channels=int(out_channels/2), 
                       kernel_size=kernel_size, stride=1, padding=padding,  # Padding might be wrong here
                       groups=int(out_channels/2), bias=True),
-            # Print("after dw Conv"),
             nn.Conv2d(in_channels=int(out_channels/2), out_channels=out_channels, kernel_size=1, stride=1, padding=0, bias=True),
-            # Print("after 2d conv")
         )
 
         self.act = nn.PReLU(out_channels)
 
     def forward(self, x):
         h = self.convAct(x)
-        # h = F.pad(h, (0, 2, 0, 2), "constant", 0)
         if self.stride == 2:
             
             x = self.max_pool(x)
         
         h = self.dwConvConv(h)
-        # print("--------------")
 
         if self.channel_pad > 0:
             x = F.pad(x, (0, 0, 0, 0, 0, self.channel_pad), "constant", 0)
@@ -77,7 +56,7 @@ class IrisBlock(nn.Module):
 
 
 class IrisLandmarks(nn.Module):
-    """The FaceMesh face landmark model from MediaPipe.
+    """The IrisLandmark face landmark model from MediaPipe.
 
     Because we won't be training this model, it doesn't need to have
     batchnorm layers. These have already been "folded" into the conv 
@@ -93,20 +72,17 @@ class IrisLandmarks(nn.Module):
     def __init__(self):
         super(IrisLandmarks, self).__init__()
 
-        self.num_coords = 228
-        self.x_scale = 64.0
-        self.y_scale = 64.0
+        # self.num_coords = 228
+        # self.x_scale = 64.0
+        # self.y_scale = 64.0
         self.min_score_thresh = 0.75
 
         self._define_layers()
 
     def _define_layers(self):
         self.backbone = nn.Sequential(
-            # Print("Input tensor"),
             nn.Conv2d(in_channels=3, out_channels=64, kernel_size=3, stride=2, padding=0, bias=True),
-            # Print("After first conv"),
             nn.PReLU(64),
-            # Print("After first prelu"),
 
             IrisBlock(64, 64),
             IrisBlock(64, 64),
@@ -147,10 +123,7 @@ class IrisLandmarks(nn.Module):
     def forward(self, x):
         # TFLite uses slightly different padding on the first conv layer
         # than PyTorch, so do it manually.
-        # x = nn.ReflectionPad2d((1, 0, 1, 0))(x)
         x = F.pad(x, [0, 1, 0, 1], "constant", 0)
-        # x = F.pad(x, [1, 0, 1, 0], "constant", 0)
-        # x = F.pad(x, (1,2,1,2), "constant", 0)
         b = x.shape[0]      # batch size, needed for reshaping later
 
         x = self.backbone(x)            # (b, 128, 8, 8)
