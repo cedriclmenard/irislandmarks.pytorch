@@ -199,9 +199,5 @@ class IrisLandmarks(nn.Module):
 
         # 3. Postprocess the raw predictions:
         eye, iris = out
-        # eye[0:-1:3] *= self.x_scale
-        # eye[1:-1:3] *= self.y_scale
-        # iris[0:-1:3] *= self.x_scale
-        # iris[1:-1:3] *= self.y_scale
 
         return eye.view(-1, 3), iris.view(-1, 3)

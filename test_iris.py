@@ -31,6 +31,8 @@ img = cv2.imread("test.jpg")
 centerRight = [485, 332]
 centerLeft = [479, 638]
 img = centerCropSquare(img, centerRight, side=400) # 400 is 1200 (image size) * 64/192, as the detector takes a 64x64 box inside the 192 image
+plt.imshow(img)
+plt.show()
 # tl = [467, 284]
 # br = [504, 397]
 # w = br[1] - tl[1]
