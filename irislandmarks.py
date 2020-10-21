@@ -200,4 +200,4 @@ class IrisLandmarks(nn.Module):
         # 3. Postprocess the raw predictions:
         eye, iris = out
 
-        return eye.view(-1, 3), iris.view(-1, 3)
+        return eye.view(-1, 71, 3), iris.view(-1, 5, 3)
