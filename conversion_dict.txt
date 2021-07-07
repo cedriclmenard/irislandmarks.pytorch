@@ -1,3 +1,7 @@
+{
+'split_eye.0.convAct.0.weight':  'conv2d_21/Kernel',
+'split_eye.0.convAct.0.bias':    'conv2d_21/Bias',
+    
 'split_eye.0.convAct.1.weight':   'p_re_lu_21/Alpha',
 'split_eye.0.dwConvConv.0.weight':   'depthwise_conv2d_10/Kernel',
 'split_eye.0.dwConvConv.0.bias':     'depthwise_conv2d_10/Bias',
@@ -127,4 +131,4 @@
 'split_iris.7.dwConvConv.1.bias':    'conv2d_52/Bias',
 'split_iris.7.act.weight':      'p_re_lu_52/Alpha',
 'split_iris.8.weight':          'conv_iris/Kernel',
-'split_iris.8.bias':            'conv_iris/Bias'
+'split_iris.8.bias':            'conv_iris/Bias'}

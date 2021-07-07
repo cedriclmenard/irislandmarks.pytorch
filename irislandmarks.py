@@ -146,7 +146,8 @@ class IrisLandmarks(nn.Module):
     
     def _preprocess(self, x):
         """Converts the image pixels to the range [-1, 1]."""
-        return x.float() / 127.5 - 1.0
+        # return x.float() / 127.5 - 1.0
+        return x.float() / 255.0 # NOTE: [0.0, 1.0] range seems to give better results
 
     def predict_on_image(self, img):
         """Makes a prediction on a single image.
