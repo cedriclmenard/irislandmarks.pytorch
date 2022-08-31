@@ -61,9 +61,9 @@ iris = iris_gpu.cpu().numpy()
 
 
 plt.imshow(img, zorder=1)
-x, y = eye[:, 0], eye[:, 1]
+x, y = eye[0,:, 0], eye[0,:, 1]
 plt.scatter(x, y, zorder=2, s=1.0)
-x, y = iris[:, 0], iris[:, 1]
+x, y = iris[0,:, 0], iris[0,:, 1]
 plt.scatter(x, y, zorder=2, s=1.0, c='r')
 plt.show()
 
